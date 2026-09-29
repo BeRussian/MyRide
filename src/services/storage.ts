@@ -388,37 +388,81 @@ export class StorageService {
 
   static getTrips(): Trip[] {
     const data = localStorage.getItem(STORAGE_KEYS.TRIPS);
+    let trips: Trip[] = [];
     if (!data) {
-      const initial = [SAMPLE_RIDE];
-      localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(initial));
-      return initial;
-    }
-    try {
-      const trips: Trip[] = JSON.parse(data);
-      let changed = false;
-      trips.forEach(trip => {
-        trip.waypoints?.forEach(wp => {
-          if (!wp.googleMapsUrl) {
-            wp.googleMapsUrl = `https://maps.google.com/?q=${encodeURIComponent(wp.name.split('(')[0].trim())}`;
-            changed = true;
-          }
-          if (wp.name.includes('דרך הגפן') && !wp.websiteUrl) {
-            wp.websiteUrl = 'https://www.derech-hagefen.co.il/';
-            changed = true;
-          }
-          if (wp.name.includes('נס הרים') && !wp.websiteUrl) {
-            wp.websiteUrl = 'https://www.facebook.com/barbaharisrael/';
-            changed = true;
-          }
-        });
-      });
-      if (changed) {
-        localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(trips));
+      trips = [SAMPLE_RIDE];
+      localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(trips));
+    } else {
+      try {
+        trips = JSON.parse(data);
+      } catch {
+        trips = [SAMPLE_RIDE];
       }
-      return trips;
-    } catch {
-      return [SAMPLE_RIDE];
     }
+
+    let changed = false;
+
+    // Check legacy storage keys to auto-recover any previous trip
+    const legacyKeys = ['myride_trips_backup', 'myride_trips_data_v3', 'myride_trips_data_v2', 'myride_trips_data_v1', 'myride_trips_data'];
+    for (const key of legacyKeys) {
+      const oldData = localStorage.getItem(key);
+      if (oldData) {
+        try {
+          const oldTrips: Trip[] = JSON.parse(oldData);
+          if (Array.isArray(oldTrips)) {
+            for (const ot of oldTrips) {
+              if (ot && ot.id && !trips.some(t => t.id === ot.id)) {
+                trips.push(ot);
+                changed = true;
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+
+    trips.forEach(trip => {
+      // Ensure route coordinates are always populated for map polyline
+      if (!trip.routeCoordinates || trip.routeCoordinates.length <= 1) {
+        if (trip.id === 'trip-nik-friday-1') {
+          trip.routeCoordinates = [
+            [32.0298, 34.8580],
+            [31.9000, 34.9000],
+            [31.7486, 34.9892],
+            [31.7450, 35.0500],
+            [31.7683, 35.2137],
+            [31.7918, 35.1588],
+            [31.7450, 35.0500],
+            [31.8500, 34.9000],
+            [32.0298, 34.8580]
+          ];
+        } else if (trip.waypoints && trip.waypoints.length > 1) {
+          trip.routeCoordinates = trip.waypoints.map(wp => [wp.lat, wp.lng]);
+        }
+        changed = true;
+      }
+
+      trip.waypoints?.forEach(wp => {
+        if (!wp.googleMapsUrl) {
+          wp.googleMapsUrl = `https://maps.google.com/?q=${encodeURIComponent(wp.name.split('(')[0].trim())}`;
+          changed = true;
+        }
+        if (wp.name.includes('דרך הגפן') && !wp.websiteUrl) {
+          wp.websiteUrl = 'https://www.derech-hagefen.co.il/';
+          changed = true;
+        }
+        if (wp.name.includes('נס הרים') && !wp.websiteUrl) {
+          wp.websiteUrl = 'https://www.facebook.com/barbaharisrael/';
+          changed = true;
+        }
+      });
+    });
+
+    if (changed) {
+      localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(trips));
+      localStorage.setItem('myride_trips_backup', JSON.stringify(trips));
+    }
+    return trips;
   }
 
   static updateWaypointDescription(tripId: string, waypointId: string, newDescription: string): Trip | undefined {

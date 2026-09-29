@@ -34,21 +34,76 @@ export class SupabaseService {
         .select('*');
 
       if (!profileErr && dbProfiles && dbProfiles.length > 0) {
-        const users = dbProfiles.map(p => mapDbProfileToUser(p as DbProfile));
-        localStorage.setItem('myride_users_data_v4', JSON.stringify(users));
-        console.log(`✅ Loaded ${users.length} profiles from Supabase.`);
+        const remoteUsers = dbProfiles.map(p => mapDbProfileToUser(p as DbProfile));
+        let localUsers: User[] = [];
+        try {
+          const raw = localStorage.getItem('myride_users_data_v4');
+          if (raw) localUsers = JSON.parse(raw);
+        } catch {}
+
+        const usersMap = new Map<string, User>();
+        remoteUsers.forEach(ru => usersMap.set(ru.id, ru));
+        localUsers.forEach(lu => {
+          if (!usersMap.has(lu.id)) {
+            usersMap.set(lu.id, lu);
+            this.syncProfile(lu).catch(() => {});
+          }
+        });
+
+        const finalUsers = Array.from(usersMap.values());
+        localStorage.setItem('myride_users_data_v4', JSON.stringify(finalUsers));
       }
 
-      // 2. Check Trips table
+      // 2. Check Trips table - Safe non-destructive merge + legacy recovery
       const { data: dbTrips, error: tripsErr } = await supabase
         .from('trips')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!tripsErr && dbTrips && dbTrips.length > 0) {
-        const trips = dbTrips.map(t => mapDbTripToTrip(t as DbTrip));
-        localStorage.setItem('myride_trips_data_v4', JSON.stringify(trips));
-        console.log(`✅ Loaded ${trips.length} trips from Supabase.`);
+      if (!tripsErr && dbTrips) {
+        const remoteTrips = dbTrips.map(t => mapDbTripToTrip(t as DbTrip));
+
+        let localTrips: Trip[] = [];
+        try {
+          const raw = localStorage.getItem('myride_trips_data_v4');
+          if (raw) localTrips = JSON.parse(raw);
+        } catch {}
+
+        // Scan all legacy keys for accidental wiped trips
+        const legacyKeys = ['myride_trips_backup', 'myride_trips_data_v3', 'myride_trips_data_v2', 'myride_trips_data_v1', 'myride_trips_data'];
+        for (const k of legacyKeys) {
+          const old = localStorage.getItem(k);
+          if (old) {
+            try {
+              const parsed: Trip[] = JSON.parse(old);
+              if (Array.isArray(parsed)) {
+                parsed.forEach(pt => {
+                  if (pt && pt.id && !localTrips.some(lt => lt.id === pt.id)) {
+                    localTrips.push(pt);
+                    console.log('🔄 Restored trip from legacy key:', pt.title);
+                  }
+                });
+              }
+            } catch {}
+          }
+        }
+
+        const tripsMap = new Map<string, Trip>();
+        // Add remote trips
+        remoteTrips.forEach(rt => tripsMap.set(rt.id, rt));
+
+        // Add local trips - if missing remotely, preserve & push to Supabase!
+        localTrips.forEach(lt => {
+          if (!tripsMap.has(lt.id)) {
+            tripsMap.set(lt.id, lt);
+            this.syncTrip(lt).catch(() => {});
+          }
+        });
+
+        const finalTrips = Array.from(tripsMap.values());
+        localStorage.setItem('myride_trips_data_v4', JSON.stringify(finalTrips));
+        localStorage.setItem('myride_trips_backup', JSON.stringify(finalTrips));
+        console.log(`✅ Loaded & safely merged ${finalTrips.length} trips.`);
       }
 
       // 3. Check Friend requests table

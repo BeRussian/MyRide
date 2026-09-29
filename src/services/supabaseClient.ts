@@ -81,26 +81,49 @@ export const mapUserToDbProfile = (u: User): DbProfile => ({
   friends: u.friends || [],
 });
 
-export const mapDbTripToTrip = (t: DbTrip): Trip => ({
-  id: t.id,
-  title: t.title,
-  originalPrompt: t.original_prompt || 'רכיבת אופנוע',
-  date: t.date,
-  startTime: t.start_time || undefined,
-  weather: t.weather,
-  creatorId: t.creator_id,
-  creatorName: t.creator_name,
-  creatorAvatar: t.creator_avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-  participants: t.participants || [],
-  pendingInvites: t.pending_invites || [],
-  totalKm: Number(t.total_km) || 0,
-  durationHours: Number(t.duration_hours) || 0,
-  waypoints: Array.isArray(t.waypoints) ? t.waypoints : [],
-  routeCoordinates: Array.isArray(t.route_coordinates) ? t.route_coordinates : [],
-  reviews: Array.isArray(t.reviews) ? t.reviews : [],
-  photos: Array.isArray(t.photos) ? t.photos : [],
-  status: (t.status === 'draft' ? 'draft' : 'published') as 'published' | 'draft',
-});
+export const mapDbTripToTrip = (t: DbTrip): Trip => {
+  const waypoints = Array.isArray(t.waypoints) ? t.waypoints : [];
+  let routeCoordinates: [number, number][] = [];
+
+  if (Array.isArray(t.route_coordinates) && t.route_coordinates.length > 1) {
+    routeCoordinates = t.route_coordinates;
+  } else if (t.id === 'trip-nik-friday-1') {
+    routeCoordinates = [
+      [32.0298, 34.8580],
+      [31.9000, 34.9000],
+      [31.7486, 34.9892],
+      [31.7450, 35.0500],
+      [31.7683, 35.2137],
+      [31.7918, 35.1588],
+      [31.7450, 35.0500],
+      [31.8500, 34.9000],
+      [32.0298, 34.8580]
+    ];
+  } else if (waypoints.length > 1) {
+    routeCoordinates = waypoints.map((w: any) => [Number(w.lat), Number(w.lng)]);
+  }
+
+  return {
+    id: t.id,
+    title: t.title,
+    originalPrompt: t.original_prompt || 'רכיבת אופנוע',
+    date: t.date,
+    startTime: t.start_time || undefined,
+    weather: t.weather,
+    creatorId: t.creator_id,
+    creatorName: t.creator_name,
+    creatorAvatar: t.creator_avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+    participants: t.participants || [],
+    pendingInvites: t.pending_invites || [],
+    totalKm: Number(t.total_km) || 0,
+    durationHours: Number(t.duration_hours) || 0,
+    waypoints,
+    routeCoordinates,
+    reviews: Array.isArray(t.reviews) ? t.reviews : [],
+    photos: Array.isArray(t.photos) ? t.photos : [],
+    status: (t.status === 'draft' ? 'draft' : 'published') as 'published' | 'draft',
+  };
+};
 
 export const mapTripToDbTrip = (t: Trip): DbTrip => ({
   id: t.id,

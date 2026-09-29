@@ -33,14 +33,17 @@ CREATE TABLE IF NOT EXISTS public.trips (
   participants TEXT[] DEFAULT ARRAY[]::TEXT[],
   pending_invites TEXT[] DEFAULT ARRAY[]::TEXT[],
   total_km NUMERIC,
-  duration_hours NUMERIC,
   waypoints JSONB,
+  route_coordinates JSONB,
   reviews JSONB DEFAULT '[]'::JSONB,
   photos JSONB DEFAULT '[]'::JSONB,
   voice_notes JSONB DEFAULT '[]'::JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- מיגרציה אוטומטית למקרה שהטבלה כבר קיימת
+ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS route_coordinates JSONB;
 
 -- 3. טבלת בקשות חברות (Friend Requests)
 CREATE TABLE IF NOT EXISTS public.friend_requests (
@@ -119,7 +122,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- נסיעת שישי לדוגמה
 INSERT INTO public.trips (
   id, title, original_prompt, date, start_time, weather, creator_id, creator_name, creator_avatar,
-  participants, pending_invites, total_km, duration_hours, waypoints, reviews, photos, voice_notes
+  participants, pending_invites, total_km, duration_hours, waypoints, route_coordinates, reviews, photos, voice_notes
 )
 VALUES (
   'trip-nik-friday-1',
@@ -145,6 +148,7 @@ VALUES (
     {"id": "wp-7", "name": "חזרה דרך נס הרים", "category": "twisties", "lat": 31.7242, "lng": 35.0345, "time": "08:50", "stopDurationMinutes": 0, "description": "ירידה קצבית ומהנה חזרה מערבה"},
     {"id": "wp-8", "name": "קריית אונו (סיום)", "category": "end", "lat": 32.0298, "lng": 34.8580, "time": "09:35", "stopDurationMinutes": 0, "description": "חזרה הביתה בשלום"}
   ]'::JSONB,
+  '[[32.0298, 34.8580], [31.9000, 34.9000], [31.7486, 34.9892], [31.7450, 35.0500], [31.7683, 35.2137], [31.7918, 35.1588], [31.7450, 35.0500], [31.8500, 34.9000], [32.0298, 34.8580]]'::JSONB,
   '[]'::JSONB,
   '[]'::JSONB,
   '[]'::JSONB

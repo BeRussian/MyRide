@@ -57,7 +57,10 @@ export const App: React.FC = () => {
       if (refreshed) {
         setSelectedTrip(refreshed);
         setMapWaypoints(refreshed.waypoints);
-        setMapCoordinates(refreshed.routeCoordinates);
+        const coords = refreshed.routeCoordinates && refreshed.routeCoordinates.length > 1
+          ? refreshed.routeCoordinates
+          : refreshed.waypoints.map(w => [w.lat, w.lng] as [number, number]);
+        setMapCoordinates(coords);
       }
     }
   };
@@ -80,7 +83,10 @@ export const App: React.FC = () => {
   const handleSelectTrip = (trip: Trip) => {
     setSelectedTrip(trip);
     setMapWaypoints(trip.waypoints);
-    setMapCoordinates(trip.routeCoordinates);
+    const coords = trip.routeCoordinates && trip.routeCoordinates.length > 1
+      ? trip.routeCoordinates
+      : (trip.waypoints || []).map(w => [w.lat, w.lng] as [number, number]);
+    setMapCoordinates(coords);
     setViewMode('detail');
   };
 

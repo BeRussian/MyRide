@@ -53,10 +53,18 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       attribution: '&copy; OpenStreetMap',
     }).addTo(map);
 
+    // Ensure we have coordinates to draw: either routeCoordinates or computed from waypoints
+    const effectiveCoords: [number, number][] =
+      (routeCoordinates && routeCoordinates.length > 1)
+        ? routeCoordinates
+        : (waypoints && waypoints.length > 1)
+          ? waypoints.map(wp => [wp.lat, wp.lng] as [number, number])
+          : [];
+
     // Glowing motorcycle GPS polyline (Cobalt / Electric Blue)
-    if (routeCoordinates && routeCoordinates.length > 1) {
+    if (effectiveCoords.length > 1) {
       // Glow underlayer
-      L.polyline(routeCoordinates, {
+      L.polyline(effectiveCoords, {
         color: '#2563eb',
         weight: 9,
         opacity: 0.35,
@@ -65,7 +73,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
       }).addTo(map);
 
       // Core crisp line
-      L.polyline(routeCoordinates, {
+      L.polyline(effectiveCoords, {
         color: '#38bdf8',
         weight: 4.5,
         opacity: 0.95,
