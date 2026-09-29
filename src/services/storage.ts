@@ -1,4 +1,5 @@
 import type { User, Trip, TripReview, StopReview, TripPhoto, FriendRequest } from '../types';
+import { SupabaseService } from './supabaseService';
 
 export const INITIAL_USERS: User[] = [
   {
@@ -242,6 +243,7 @@ export class StorageService {
   static updateUser(updated: User): void {
     const users = this.getUsers().map(u => u.id === updated.id ? updated : u);
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    SupabaseService.syncProfile(updated).catch(() => {});
   }
 
   static getFriends(userId: string): User[] {
@@ -299,6 +301,7 @@ export class StorageService {
 
     requests.push(newRequest);
     this.saveFriendRequests(requests);
+    SupabaseService.syncFriendRequest(newRequest).catch(() => {});
     return true;
   }
 
@@ -309,6 +312,7 @@ export class StorageService {
 
     req.status = 'accepted';
     this.saveFriendRequests(requests);
+    SupabaseService.syncFriendRequest(req).catch(() => {});
 
     const users = this.getUsers();
     const fromUser = users.find(u => u.id === req.fromUserId);
@@ -322,6 +326,8 @@ export class StorageService {
       if (!toUser.friends.includes(fromUser.id)) toUser.friends.push(fromUser.id);
 
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      SupabaseService.syncProfile(fromUser).catch(() => {});
+      SupabaseService.syncProfile(toUser).catch(() => {});
     }
   }
 
@@ -354,6 +360,7 @@ export class StorageService {
     };
     users.push(newUser);
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    SupabaseService.syncProfile(newUser).catch(() => {});
     return newUser;
   }
 
@@ -361,6 +368,7 @@ export class StorageService {
     let users = this.getUsers();
     users = users.filter(u => u.id !== userId);
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    SupabaseService.deleteProfile(userId).catch(() => {});
 
     const trips = this.getTrips();
     trips.forEach(trip => {
@@ -435,14 +443,17 @@ export class StorageService {
       trips.unshift(trip);
     }
     localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(trips));
+    SupabaseService.syncTrip(trip).catch(() => {});
   }
 
   static updateTrip(updatedTrip: Trip): void {
     const trips = this.getTrips();
     const index = trips.findIndex(t => t.id === updatedTrip.id);
     if (index >= 0) {
-      trips[index] = { ...updatedTrip, updatedAt: new Date().toLocaleDateString('he-IL') };
+      const refreshedTrip = { ...updatedTrip, updatedAt: new Date().toLocaleDateString('he-IL') };
+      trips[index] = refreshedTrip;
       localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(trips));
+      SupabaseService.syncTrip(refreshedTrip).catch(() => {});
     }
   }
 
@@ -478,6 +489,7 @@ export class StorageService {
     if (trip.participants.length === 0) {
       const filtered = trips.filter(t => t.id !== tripId);
       localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(filtered));
+      SupabaseService.deleteTrip(tripId).catch(() => {});
     } else {
       this.saveTrip(trip);
     }
@@ -487,6 +499,7 @@ export class StorageService {
     let trips = this.getTrips();
     trips = trips.filter(t => t.id !== tripId);
     localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(trips));
+    SupabaseService.deleteTrip(tripId).catch(() => {});
   }
 
   static getTripById(tripId: string): Trip | undefined {

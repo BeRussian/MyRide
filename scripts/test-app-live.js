@@ -16,6 +16,7 @@ async function runBrowserTest() {
   });
 
   try {
+    const page = await browser.newPage();
     const targetUrl = process.env.TEST_URL || 'http://127.0.0.1:5173';
     console.log(`🌐 Navigating to ${targetUrl} ...`);
     await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 20000 });

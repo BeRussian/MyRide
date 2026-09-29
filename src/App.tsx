@@ -12,11 +12,14 @@ import { EditProfileModal } from './components/Profile/EditProfileModal';
 import { FriendsModal } from './components/Friends/FriendsModal';
 import { UserProfileModal } from './components/Friends/UserProfileModal';
 import { LiveRideModal } from './components/LiveRide/LiveRideModal';
+import { SupabaseService } from './services/supabaseService';
+import { isSupabaseConfigured } from './services/supabaseClient';
 import {
   Plus,
   Bell,
   Shield,
-  Users
+  Users,
+  Database
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -58,6 +61,14 @@ export const App: React.FC = () => {
       }
     }
   };
+
+  React.useEffect(() => {
+    SupabaseService.initAndSync({
+      onDataChanged: () => {
+        refreshData();
+      }
+    });
+  }, []);
 
   const handleUserSwitch = (userId: string) => {
     StorageService.setActiveUserId(userId);
@@ -136,6 +147,18 @@ export const App: React.FC = () => {
               <Shield className="w-3.5 h-3.5" />
               <span>ניהול אדמין</span>
             </button>
+          )}
+
+          {/* Supabase Cloud Connection Badge */}
+          {isSupabaseConfigured() && (
+            <div
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] rounded-xl font-medium"
+              title="מחובר למסד נתונים בענן Supabase"
+            >
+              <Database className="w-3 h-3 text-emerald-400" />
+              <span>Supabase Cloud</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
           )}
 
           {/* Friends Hub Button */}
